@@ -51,16 +51,16 @@ def get_pr_from_conf_mx(conf_mx, class_weights):
         conf_mx = conf_mx.astype(float)
         conf_mx *= (np.array(class_weights, dtype=float) / (label_counts + 1e-5) )[:, np.newaxis]
 
-    # number of gt smooth 
+    # number of gt smooth
     smooth_count_true = np.sum(conf_mx[2, :])
-    
-    # number of predicted smooth 
+
+    # number of predicted smooth
     smooth_count_pred = np.sum(conf_mx[:, 1])
-    
-    # number of correct predicted smoothj 
+
+    # number of correct predicted smoothj
     smooth_count_correct = float(conf_mx[2, 1])
     # assert smooth_count_true != 0
-    
+
     smooth_recall = smooth_count_correct / (smooth_count_true + 1e-5)
     # if smooth_count_pred:
     smooth_prec = smooth_count_correct / (smooth_count_pred + 1e-5)
@@ -69,10 +69,11 @@ def get_pr_from_conf_mx(conf_mx, class_weights):
 
     return smooth_prec, smooth_recall
 
-def load_img_arr(photo_id):
+def load_img_arr(images_dir, photo_id):
     # root = "/home/zl548/phoenix24/"
-    root = "/"
-    img_path = root + "/phoenix/S6/zl548/SAW/saw_release/saw/saw_images_512/" + str(photo_id) + ".png"
+    #root = "/"
+    #img_path = root + "/phoenix/S6/zl548/SAW/saw_release/saw/saw_images_512/" + str(photo_id) + ".png"
+    img_path = os.path.join(images_dir, str(photo_id) + ".png")
     srg_img = Image.open(img_path)
     srg_img = np.asarray(srg_img).astype(float) / 255.0
     return srg_img
@@ -132,7 +133,7 @@ def grouped_weighted_confusion_matrix(y_true, y_pred, y_pred_max, average_gradie
         else:
 
             for pred_label in xrange(2):
-                gradient_mask = average_gradient[mask] 
+                gradient_mask = average_gradient[mask]
                 correct_pred = (y_pred[mask] == pred_label)
                 gradient_mask = gradient_mask[correct_pred]
 

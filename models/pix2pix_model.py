@@ -37,12 +37,12 @@ class Pix2PixModel(BaseModel):
             model.load_state_dict(model_parameters)
 
         self.netG  = model.cuda()
-        self.lr = opt.lr
-        self.old_lr = opt.lr
+        #self.lr = opt.lr
+        #self.old_lr = opt.lr
 
-        if self.isTrain:            
+        if self.isTrain:
             self.netG.train()
-            self.criterion_joint = networks.JointLoss() 
+            self.criterion_joint = networks.JointLoss()
             # initialize optimizers
             self.optimizer_G = torch.optim.Adam(self.netG.parameters(),
                                                 lr=opt.lr, betas=(0.9, 0.999))
@@ -95,7 +95,7 @@ class Pix2PixModel(BaseModel):
         comparisons = judgements['intrinsic_comparisons']
         id_to_points = {p['id']: p for p in points}
         rows, cols = reflectance.shape[0:2]
- 
+
         error_sum = 0.0
         weight_sum = 0.0
 
@@ -142,7 +142,7 @@ class Pix2PixModel(BaseModel):
 
     def evaluate_WHDR(self, prediction_R, targets):
         total_whdr = float(0)
-        count = float(0) 
+        count = float(0)
 
         for i in range(0, prediction_R.size(0)):
             print(targets['path'][i])
@@ -151,9 +151,9 @@ class Pix2PixModel(BaseModel):
 
             o_h = targets['oringinal_shape'][0].numpy()
             o_w = targets['oringinal_shape'][1].numpy()
-            # resize to original resolution 
+            # resize to original resolution
             prediction_R_np = resize(prediction_R_np, (o_h[i],o_w[i]), order=1, preserve_range=True)
-            # load Json judgement 
+            # load Json judgement
             judgements = json.load(open(targets["judgements_path"][i]))
             whdr = self.compute_whdr(prediction_R_np, judgements, 0.1)
 
@@ -193,7 +193,7 @@ class Pix2PixModel(BaseModel):
         self.old_lr = lr
 
 
-    def compute_pr(self, pixel_labels_dir, splits_dir, dataset_split, class_weights, bl_filter_size, thres_count=400):
+    def compute_pr(self, pixel_labels_dir, splits_dir, images_dir, dataset_split, class_weights, bl_filter_size, thres_count=400):
 
         thres_list = saw_utils.gen_pr_thres_list(thres_count)
         photo_ids = saw_utils.load_photo_ids_for_split(
@@ -210,13 +210,13 @@ class Pix2PixModel(BaseModel):
         print("FN ", fn)
         print("title ", title)
 
-        # compute PR 
-        rdic_list = self.get_precision_recall_list_new(pixel_labels_dir=pixel_labels_dir, thres_list=thres_list,
+        # compute PR
+        rdic_list = self.get_precision_recall_list_new(pixel_labels_dir=pixel_labels_dir, images_dir=images_dir, thres_list=thres_list,
             photo_ids=photo_ids, class_weights=class_weights, bl_filter_size = bl_filter_size)
 
         plot_arr = np.empty((len(rdic_list) + 2, 2))
 
-        # extrapolate starting point 
+        # extrapolate starting point
         plot_arr[0, 0] = 0.0
         plot_arr[0, 1] = rdic_list[0]['overall_prec']
 
@@ -233,7 +233,7 @@ class Pix2PixModel(BaseModel):
         return AP
 
 
-    def get_precision_recall_list_new(self, pixel_labels_dir, thres_list, photo_ids,
+    def get_precision_recall_list_new(self, pixel_labels_dir, images_dir, thres_list, photo_ids,
                                   class_weights, bl_filter_size):
 
         output_count = len(thres_list)
@@ -242,13 +242,13 @@ class Pix2PixModel(BaseModel):
             for _ in xrange(output_count)
         ]
 
-        count = 0 
+        count = 0
         total_num_img = len(photo_ids)
 
         for photo_id in (photo_ids):
             print("photo_id ", count, photo_id, total_num_img)
 
-            saw_img = saw_utils.load_img_arr(photo_id)
+            saw_img = saw_utils.load_img_arr(images_dir, photo_id)
             original_h, original_w = saw_img.shape[0], saw_img.shape[1]
             saw_img = saw_utils.resize_img_arr(saw_img)
 
@@ -256,10 +256,10 @@ class Pix2PixModel(BaseModel):
             input_ = torch.from_numpy(saw_img).unsqueeze(0).contiguous().float()
             input_images = Variable(input_.cuda() , requires_grad = False)
 
-            prediction_S, prediction_R, rgb_s = self.netG.forward(input_images) 
+            prediction_S, prediction_R, rgb_s = self.netG.forward(input_images)
 
             prediction_Sr = torch.exp(prediction_S)
-            prediction_S_np = prediction_Sr.data[0,0,:,:].cpu().numpy() 
+            prediction_S_np = prediction_Sr.data[0,0,:,:].cpu().numpy()
             prediction_S_np = resize(prediction_S_np, (original_h, original_w), order=1, preserve_range=True)
 
             # compute confusion matrix
@@ -332,7 +332,7 @@ class Pix2PixModel(BaseModel):
         # (2) smooth shading (S)
         # (100) no data, ignored
         y_true = saw_utils.load_pixel_labels(pixel_labels_dir=pixel_labels_dir, photo_id=photo_id)
-        
+
         y_true = np.ravel(y_true)
         ignored_mask = y_true == 100
 
@@ -355,4 +355,3 @@ class Pix2PixModel(BaseModel):
             ret.append(confusion_matrix)
 
         return ret
-
